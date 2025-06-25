@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
-  // --- Core Solving Logic (Backtracking Algorithm) ---
+  // --- Core Solving Logic (Optimized Backtracking with MRV Heuristic) ---
 
   const steps = [];
 
@@ -112,28 +112,66 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
-  // Main recursive solver
-  function solveSudoku(board) {
+  // Finds the empty cell with the fewest possible values (MRV heuristic)
+  function findBestEmptyCell(board) {
+    let bestCell = null;
+    let minPossibilities = 10; // Start with a number > 9
+
     for (let i = 0; i < 9; i++) {
       for (let j = 0; j < 9; j++) {
         if (board[i][j] === 0) {
+          // Check only empty cells
+          let possibilities = 0;
           for (let num = 1; num <= 9; num++) {
             if (isValid(board, i, j, num)) {
-              board[i][j] = num;
-              steps.push({ row: i, col: j, num: num, type: "place" });
-              if (solveSudoku(board)) {
-                return true;
-              } else {
-                board[i][j] = 0;
-                steps.push({ row: i, col: j, num: 0, type: "backtrack" });
-              }
+              possibilities++;
             }
           }
-          return false; // Backtrack
+
+          // If this cell is better than the previous best, update
+          if (possibilities < minPossibilities) {
+            minPossibilities = possibilities;
+            bestCell = { row: i, col: j };
+          }
+
+          // Optimization: If a cell has only 1 possibility, it's the best possible choice
+          if (minPossibilities === 1) {
+            return bestCell;
+          }
         }
       }
     }
-    return true; // Solved
+    return bestCell; // Will be null if board is full
+  }
+
+  // Main recursive solver using the MRV heuristic
+  function solveSudoku(board) {
+    const bestCell = findBestEmptyCell(board);
+
+    // If there are no more empty cells, the puzzle is solved
+    if (!bestCell) {
+      return true;
+    }
+
+    const { row, col } = bestCell;
+
+    // Try all valid numbers for the best cell
+    for (let num = 1; num <= 9; num++) {
+      if (isValid(board, row, col, num)) {
+        board[row][col] = num;
+        steps.push({ row: row, col: col, num: num, type: "place" });
+
+        if (solveSudoku(board)) {
+          return true; // Found a solution
+        }
+
+        // Backtrack if the path didn't lead to a solution
+        board[row][col] = 0;
+        steps.push({ row: row, col: col, num: 0, type: "backtrack" });
+      }
+    }
+
+    return false; // Trigger backtracking in the previous call
   }
 
   // --- UI Interaction and Visualization ---
